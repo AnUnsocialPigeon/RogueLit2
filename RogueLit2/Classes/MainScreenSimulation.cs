@@ -39,7 +39,7 @@ namespace RogueLit2.Classes {
 
             Cycletask = new(() => {
                 while (!Shutdown) {
-                    for (int i = 0; i < 50; i++) {
+                    for (int i = 0; i < 55; i++) {
                         Animate();
                         GenerateNextCells();
                         Thread.Sleep(AnimationCycleSpeed);

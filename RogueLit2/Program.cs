@@ -66,8 +66,8 @@ namespace RogueLit2 {
             sim.Dispose();
             Console.Clear();
 
-
             GameMaster.StopAudio(SFX.MainTheme1);
+            GameMaster.StopAudio(SFX.Fire2);
         }
 
         private static DateTime lastMovementKeyPressed = DateTime.Now;

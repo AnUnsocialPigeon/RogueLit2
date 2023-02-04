@@ -4,12 +4,12 @@ using System.Numerics;
 namespace RogueLit2.Classes {
     internal class CreatureHandler {
         private GameMaster GameMaster { get; set; }
-        internal double Currency { get; set; } = 7;
-        internal int GameTickTime { get; set; }
-        internal double ChanceForSpawnPerTick { get; set; }
-        internal double UnitBucketSize { get; set; } = 45;
-        internal double CurrencyPerTick { get; set; } = 1;
-        internal double CreatureSpeedMultiplier { get; set; } = 1;
+        internal double Currency { get; set; } = 15;
+        internal int GameTickTime => (int)(400 / ((GameMaster.Depth * 0.2) + 0.8));
+        internal double ChanceForSpawnPerTick => 20d / ((GameMaster.Depth * 0.2d) + 0.8d);
+        internal double UnitBucketSize => 35d + (GameMaster.Depth * 15d);
+        internal double CurrencyPerTick => 0.8 + (GameMaster.Depth * 0.4d);
+        internal double CreatureSpeedMultiplier => 0.8 + (GameMaster.Depth * 0.2d);
 
         private readonly Random rnd = new();
 
@@ -39,12 +39,9 @@ namespace RogueLit2.Classes {
         private DateTime LastGhostScream = DateTime.MinValue;
 
 
-        public CreatureHandler(GameMaster GameMaster, int GameTickTime, int ChanceForSpawnPerTick) {
+        public CreatureHandler(GameMaster GameMaster) {
             this.GameMaster = GameMaster;
-            this.GameTickTime = GameTickTime;
-            this.ChanceForSpawnPerTick = ChanceForSpawnPerTick;
         }
-
 
         public Task Start() {
             if (GameMaster.CameraHandler == null) throw new("CameraHandler has not been set");
@@ -122,10 +119,10 @@ namespace RogueLit2.Classes {
                     Slowness: 350,
                     UnitSize: 2,
                     Aggression: Aggression.Aggressive,
-                    PlayerViscinityThreshold: 8);
+                    PlayerViscinityThreshold: 9);
             if (creature == Creature.Ghost) {
                 return new(position, PropertyGetter.CreatureToCreatureProperties[creature],
-                    Slowness: 700,
+                    Slowness: 630,
                     UnitSize: 5,
                     Aggression: Aggression.Aggressive,
                     PlayerViscinityThreshold: 10000);
@@ -146,25 +143,6 @@ namespace RogueLit2.Classes {
 
             if (creature.Aggression == Aggression.Trap && !seePlayer)
                 return creature;
-
-            // Fear of light
-            if (creature.Aggression != Aggression.FearOfLight && GameMaster.Level.GetAllLightSources(false)
-                        .Where(x => GameMaster.Level.DistanceBetweenPoints(x.Position, creature.Position) < 4).Any()) {
-                creature.Aggression = Aggression.FearOfLight;
-                GameMaster.PlayAudio(SFX.Whimper1);
-            }
-
-            if (creature.Aggression == Aggression.FearOfLight) {
-                RunAway(creature);
-
-                // Lose fear of light
-                if (!GameMaster.Level.GetAllLightSources(false)
-                        .Where(x => GameMaster.Level.DistanceBetweenPoints(x.Position, creature.Position) < 8)
-                        .Any()) {
-                    creature.Aggression = creature.Property.Creature == Creature.Ghost ? Aggression.Aggressive : Aggression.Roam;
-                }
-                return creature;
-            }
 
             // Looses Aggression
             if (creature.Aggression == Aggression.Aggressive && !seePlayer) {
@@ -204,24 +182,6 @@ namespace RogueLit2.Classes {
             // Else, aggressive
             MoveTowardsPlayer(creature);
             return creature;
-        }
-
-        private void RunAway(CreatureObject creature) {
-            bool[] availableTiles = GetAvailableTiles(creature);
-
-            // Swaps the points to move in the opposite direction
-            LightSource v = GameMaster.Level.GetAllLightSources(false)
-                .OrderBy(x => GameMaster.Level.DistanceBetweenPoints(x.Position, creature.Position))
-                .First();
-
-
-            Point t = GetTileToMoveAwayTo(creature.Position, v.Position, availableTiles);
-
-            if (BoundCheck(t) && BoundCheck(creature.Position) && t != creature.Position && (t.x != GameMaster.Player.Position.x || t.y != GameMaster.Player.Position.y) && GameMaster.Level.MoveCreature(creature.Position, t)) {
-                creature.Position = t;
-                if (GameMaster.CameraHandler.IsPointInView(creature.Position))
-                    GameMaster.CameraHandler.QueueUpdate();
-            }
         }
 
 
@@ -290,26 +250,6 @@ namespace RogueLit2.Classes {
             if (yDiff > 0 && availableTiles[3] == true)
                 validMoves.Add(new(creaturePoint.x, creaturePoint.y + 1));
             if (yDiff < 0 && availableTiles[0] == true)
-                validMoves.Add(new(creaturePoint.x, creaturePoint.y - 1));
-
-            if (validMoves.Count == 0)
-                return creaturePoint;
-
-            return validMoves[rnd.Next(validMoves.Count)];
-        }
-        private Point GetTileToMoveAwayTo(Point creaturePoint, Point playerPoint, bool[] availableTiles) {
-            int xDiff = playerPoint.x - creaturePoint.x;
-            int yDiff = playerPoint.y - creaturePoint.y;
-            List<Point> validMoves = new();
-
-            // CBA TBH
-            if (xDiff < 0 && availableTiles[2] == true)
-                validMoves.Add(new(creaturePoint.x + 1, creaturePoint.y));
-            if (xDiff > 0 && availableTiles[1] == true)
-                validMoves.Add(new(creaturePoint.x - 1, creaturePoint.y));
-            if (yDiff < 0 && availableTiles[3] == true)
-                validMoves.Add(new(creaturePoint.x, creaturePoint.y + 1));
-            if (yDiff > 0 && availableTiles[0] == true)
                 validMoves.Add(new(creaturePoint.x, creaturePoint.y - 1));
 
             if (validMoves.Count == 0)

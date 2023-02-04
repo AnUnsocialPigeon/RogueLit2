@@ -35,26 +35,16 @@
         private Task CreatureHandlerTask;
         private Task CreepyBreathTask;
 
-        private SFX[] WinSFX = new SFX[] { SFX.Bell1, SFX.Bell2, SFX.Bell4, SFX.Bell3, SFX.JumpScare1 };
+        private SFX[] WinSFX = new SFX[] { SFX.Bell2, SFX.Bell1, SFX.Bell2, SFX.Bell4, SFX.Bell3, SFX.JumpScare1 };
 
 
         internal GameMaster() {
             AudioController = new();
         }
         internal void Begin() {
-            CreatureHandler = new(this, GameTickTime, StartChanceForSpawnPerTick);
+            CreatureHandler = new(this);
             GenerateLevel();
-
-            DepthUIBoxID = CameraHandler.CreateUIBox(GetDepthContents(), 14, 3, new((CameraHandler.CameraWidth * 2) - 14, 0));
-
             CreatureHandlerTask = CreatureHandler.Start();
-
-            // Reset CreatureHandler properties
-            CreatureHandler.Currency = 0;
-            CreatureHandler.GameTickTime = GameTickTime;
-            CreatureHandler.CurrencyPerTick = 1;
-            CreatureHandler.UnitBucketSize = StartUnitBucketSize;
-            CreatureHandler.ChanceForSpawnPerTick = StartChanceForSpawnPerTick;
 
             // Starts a task loop to play creepy breath audio's
             CreepyBreathTask = new(() => {
@@ -69,7 +59,7 @@
             });
             CreepyBreathTask.Start();
 
-
+            DepthUIBoxID = CameraHandler.CreateUIBox(GetDepthContents(), 14, 3, new((CameraHandler.CameraWidth * 2) - 14, 0));
         }
 
         public void Reset() {
@@ -77,6 +67,7 @@
             GenerateLevel();
 
             CameraHandler.UpdateTorchUI();
+            CameraHandler.UpdateUIBox(GetDepthContents(), DepthUIBoxID);
         }
 
         internal void GenerateLevel() {
@@ -84,6 +75,8 @@
 
             // reset player
             ResetPlayer();
+
+            AudioController.PlayAudio(WinSFX[Math.Min(Depth, WinSFX.Length - 1)]);
         }
 
         private void ResetPlayer() {
@@ -98,18 +91,14 @@
 
             // Win (A level)
             if (Level.LitTorches >= Level.MaxTorches - TorchLeniency) {
-                AudioController.PlayAudio(WinSFX[Math.Min(Depth, WinSFX.Length - 1)]);
-                
-                GenerateLevel();
-                CameraHandler.UpdateTorchUI();
-                CameraHandler.UpdateUIBox(GetDepthContents(), DepthUIBoxID);
 
-                CreatureHandler.UnitBucketSize *= 1.3d;
-                CreatureHandler.CurrencyPerTick *= 1.4d;
-                CreatureHandler.Currency = 7 * Depth;
-                CreatureHandler.ChanceForSpawnPerTick *= 0.9f;
+                GenerateLevel();
 
                 Depth++;
+                CreatureHandler.Currency = 7 * Depth;
+
+                CameraHandler.UpdateTorchUI();
+                CameraHandler.UpdateUIBox(GetDepthContents(), DepthUIBoxID);
             }
         }
 

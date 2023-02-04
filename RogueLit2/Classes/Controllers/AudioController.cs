@@ -44,7 +44,7 @@ namespace RogueLit2.Classes.Controllers {
             { SFX.Bell1, 4 },
             { SFX.Bell2, 5 },
             { SFX.Bell3, 4 },
-            { SFX.Bell4, 14 },
+            { SFX.Bell4, 15 },
             { SFX.Swing1, 0 },
             { SFX.Rubble1, 2 },
             { SFX.SmallRubble1, 2 },
