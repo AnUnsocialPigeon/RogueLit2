@@ -1,6 +1,6 @@
 ﻿using System.Runtime.InteropServices;
 
-namespace RogueLit2.Classes {
+namespace RogueLit2.Classes.Controllers {
     internal class DisableConsoleMovement {
         private const int MF_BYCOMMAND = 0x00000000;
         public const int SC_CLOSE = 0xF060;

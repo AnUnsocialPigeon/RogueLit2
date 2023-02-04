@@ -1,40 +1,49 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace RogueLit2.Classes {
+﻿namespace RogueLit2.Classes {
     internal class Tile {
-        internal Tile(int LightLevel, Texture Texture) {
+        internal Tile(int LightLevel, Texture Texture, Creature? Creature = null) {
             this.LightLevel = LightLevel;
-            this.Texture = Texture;
-            Seen = false;
+            SetTexture(Texture);
+            Seen = LightLevel > 0;
+            SetCreature(Creature);
         }
 
-        internal int LightLevel { 
-            get => _LightLevel; 
+        internal int LightLevel {
+            get => _LightLevel;
             set {
                 if (value != 0) Seen = true;
                 _LightLevel = value;
             }
         }
-        internal int _LightLevel { get; set; }
-        internal Texture Texture;
-        internal Creature? Creature;
-        internal bool Seen;
+        private int _LightLevel { get; set; }
+        internal int RedLightLevel { get; set; }
+        internal TileProperties Property { get; private set; }
+        internal CreatureProperties? Creature { get; set; }
+        internal void SetTexture(Texture t) {
+            Property = PropertyGetter.TextureToTileProperties[t];
+        }
+        internal void SetCreature(Creature? c) {
+            Creature = c != null ? PropertyGetter.CreatureToCreatureProperties[c ?? Classes.Creature.Player] : null;
+        }
+        internal bool Seen { get; set; }
     }
 
-
     internal enum Texture {
-        Floor, 
-        Wall,
+        Floor,
+        Rock,
         Water,
         UnlitTorch,
         LitTorch
     }
 
     internal enum Creature {
-        Player
+        Player,
+        FalseTorch,
+        Chaser,
+        FalseUnlitTorch,
+        Ghost,
+    }
+    internal enum Hue {
+        Default,
+        Red,
     }
 }

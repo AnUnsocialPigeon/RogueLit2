@@ -1,39 +1,40 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace RogueLit2.Classes {
+﻿namespace RogueLit2.Classes {
     internal class Level {
         internal int AreaWidth, AreaHeight;
         internal Tile[] Tiles;
+        internal int LitTorches = 0;
+        internal int MaxTorches = 12;
+        private Point[]? UnlitTorches;
 
-        // Boundary around the area of which will be wall during generation.
-        private int boundary = 2;
+        // Boundary around the area of which will be surrounding wall during generation.
+        private readonly int boundary = 2;
+        private readonly Random rnd = new();
+        internal Player Player;
 
-        private Random rnd = new();
-
-        internal Level(int width, int height) {
+        internal Level(int width, int height, Player player) {
             AreaWidth = width;
             AreaHeight = height;
+            Player = player;
 
             // Generation
             Tiles = new Tile[width * height];
-            Tiles = Tiles.Select(x => x = new(0, Texture.Wall)).ToArray();
+            Tiles = Tiles.Select(x => x = new(0, Texture.Rock)).ToArray();
 
+            LitTorches = 0;
             GenerateLevel();
-            PopulateTorches(10);
         }
 
 
         #region LevelGeneration
         private void GenerateLevel() {
             GenerateChasm(rnd.Next(65, 70));
+            PopulateTorches(MaxTorches);
+            UnlitTorches = GetAllUnlitTorches(true);
         }
 
+
         private void GenerateChasm(int PercentFloor) {
-            Tiles = Tiles.Select(x => { x.Texture = rnd.Next(100) <= PercentFloor ? Texture.Floor : Texture.Wall; return x; }).ToArray();
+            Tiles = Tiles.Select(x => { x.SetTexture(rnd.Next(100) <= PercentFloor ? Texture.Floor : Texture.Rock); return x; }).ToArray();
             for (int i = 0; i < 5; i++)
                 Smoothe(SmootheOption.Floor);
 
@@ -60,23 +61,23 @@ namespace RogueLit2.Classes {
             List<int> ChangeToFloor = new();
 
             for (int i = 0; i < Tiles.Length; i++) {
-                if ((Tiles[i].Texture == Texture.Wall && option == SmootheOption.Floor) ||
-                    (Tiles[i].Texture == Texture.Floor && option == SmootheOption.Wall)) continue;
+                if ((Tiles[i].Property.Texture == Texture.Rock && option == SmootheOption.Floor) ||
+                    (Tiles[i].Property.Texture == Texture.Floor && option == SmootheOption.Wall)) continue;
                 Point p = LongToPoint(i);
                 Tile[] surrounding = GetTilesAround(p);
 
-                if ((option == SmootheOption.Floor || option == SmootheOption.Both) && surrounding.Where(x => x.Texture == Texture.Floor).Count() < 4) {
+                if ((option == SmootheOption.Floor || option == SmootheOption.Both) && surrounding.Where(x => x.Property.Texture == Texture.Floor).Count() < 4) {
                     ChangeToWall.Add(i);
                     continue;
                 }
-                if ((option == SmootheOption.Wall || option == SmootheOption.Both) && surrounding.Where(x => x.Texture == Texture.Wall).Count() < 3) {
+                if ((option == SmootheOption.Wall || option == SmootheOption.Both) && surrounding.Where(x => x.Property.Texture == Texture.Rock).Count() < 3) {
                     ChangeToFloor.Add(i);
                 }
             }
             foreach (int posLong in ChangeToWall)
-                Tiles[posLong].Texture = Texture.Wall;
+                Tiles[posLong].SetTexture(Texture.Rock);
             foreach (int posLong in ChangeToFloor)
-                Tiles[posLong].Texture = Texture.Floor;
+                Tiles[posLong].SetTexture(Texture.Floor);
         }
 
         private Tile[] GetTilesAround(Point p) {
@@ -90,6 +91,16 @@ namespace RogueLit2.Classes {
             return tiles.ToArray();
         }
 
+        internal Tile?[] GetTilesAdjascent(Point p) {
+            List<Tile?> tiles = new();
+            tiles.Add(p.y - 1 < 0 ? null : Tiles[PointToLong(new(p.x, p.y - 1))]);
+            tiles.Add(p.x - 1 < 0 ? null : Tiles[PointToLong(new(p.x - 1, p.y))]);
+            tiles.Add(p.x + 1 >= AreaWidth ? null : Tiles[PointToLong(new(p.x + 1, p.y))]);
+            tiles.Add(p.y + 1 >= AreaHeight ? null : Tiles[PointToLong(new(p.x, p.y + 1))]);
+
+            return (tiles.ToArray());
+        }
+
         private bool AttemptToFitRoom(int width, int height, Point topLeft) {
             // Wall checks
             if (topLeft.x > AreaWidth - 10 - boundary || topLeft.y > AreaHeight - 10 - boundary) return false;
@@ -99,14 +110,14 @@ namespace RogueLit2.Classes {
             // Can fit?
             for (int x = topLeft.x; x < topLeft.x + width; x++) {
                 for (int y = topLeft.y; y < topLeft.y + height; y++) {
-                    if (GetTile(new(x, y)).Texture != Texture.Wall) return false;
+                    if (GetTile(new(x, y)).Property.Texture != Texture.Rock) return false;
                 }
             }
 
             // Place
             for (int x = topLeft.x; x < topLeft.x + width; x++) {
                 for (int y = topLeft.y; y < topLeft.y + height; y++) {
-                    GetTile(new(x, y)).Texture = Texture.Floor;
+                    GetTile(new(x, y)).Property.Texture = Texture.Floor;
                 }
             }
             return true;
@@ -117,7 +128,7 @@ namespace RogueLit2.Classes {
             for (int i = 0; i < amount; i++) {
                 try {
                     Point pos = GetRandomFreeSpace();
-                    Tiles[PointToLong(pos)].Texture = Texture.UnlitTorch;
+                    Tiles[PointToLong(pos)].SetTexture(Texture.UnlitTorch);
                 }
                 catch { break; }
             }
@@ -131,52 +142,123 @@ namespace RogueLit2.Classes {
         }
         #endregion
 
+        #region CalculteBrigthness
         internal void UpdateAllLightValue() {
-            Point[] lightSources = GetAllLightSources();
+            LightSource[] lightSources = GetAllLightSources(true);
 
             for (int i = 0; i < Tiles.Length; i++) {
                 Point t = LongToPoint(i);
-                Tiles[i].LightLevel = GetMaxBrightness(lightSources, t);
+                Light l = GetMaxBrightness(lightSources, t);
+
+                Tiles[i].RedLightLevel = l.Hue == Hue.Red ? l.Intensity : 0;
+                Tiles[i].LightLevel = l.Hue == Hue.Default ? l.Intensity : 0;
             }
         }
 
-        private int GetMaxBrightness(Point[] lightSources, Point tile) {
-            int maxBrightness = 0;
-            foreach (Point p in lightSources) {
-                if (p.x == tile.x && p.y == tile.y) {
-                    maxBrightness = 5;
-                    break;
+
+        private Light GetMaxBrightness(LightSource[] lightSources, Point tile) {
+            Light maxBrightness = new(0, Hue.Red);
+            foreach (LightSource p in lightSources) {
+                Tile lightSource = GetTile(p.Position);
+                CreatureProperties? creature = lightSource.Creature;
+
+                // Prioritising White.
+                if ((lightSource.Property.Hue == Hue.Red || (creature != null && creature.Hue == Hue.Red)) && maxBrightness.Hue == Hue.Default) 
+                    continue;
+
+
+                int lightSourceLevel = Math.Max(lightSource.Property.LightEmittanceLevel,
+                        creature == null ? 0 :
+                        creature.LightEmmitance);
+
+                // For dist = 0
+                if (p.Position.x == tile.x && p.Position.y == tile.y) {
+                    maxBrightness.Intensity = lightSourceLevel;
+
+                    // Change hue to default if it is red
+                    maxBrightness.Hue = maxBrightness.Hue == Hue.Default ? Hue.Default : p.Hue;
                 }
 
-                int distance = (int)(5d / DistanceBetweenPoints(p, tile));
-                if (distance > maxBrightness)
-                    maxBrightness = distance;
-            
+                int distance = Math.Min((int)(lightSourceLevel / DistanceBetweenPoints(p.Position, tile)), 7);
+                if ((p.Hue == Hue.Default && distance > 0 && maxBrightness.Hue == Hue.Red) || distance > maxBrightness.Intensity) {
+                    maxBrightness.Intensity = distance;
+
+                    // Change hue to default if it is red
+                    maxBrightness.Hue = maxBrightness.Hue == Hue.Default ? Hue.Default : p.Hue;
+                }
+
             }
             return maxBrightness;
         }
 
-        private double DistanceBetweenPoints(Point p, Point t) => 
-            (double)Math.Sqrt(Math.Pow(p.x - t.x, 2) + Math.Pow(p.y - t.y, 2));
+        internal double DistanceBetweenPoints(Point p, Point t) {
+            double x = p.x - t.x;
+            double y = p.y - t.y;
+            return (double)Math.Sqrt((x * x) + (y * y));
+        }
 
-        private Point[] GetAllLightSources() {
-            List<Point> lightSources = new();
+        // TODO: MAKE EFFICIENT
+        internal LightSource[] GetAllLightSources(bool IncludeCreatures) {
+            List<LightSource> lightSources = new();
             for (int i = 0; i < Tiles.Length; i++) {
-                if (Tiles[i].Texture == Texture.LitTorch || Tiles[i].Creature == Creature.Player)
-                    lightSources.Add(LongToPoint(i));
+                if (Tiles[i].Property.LightEmittanceLevel > 0) {
+                    lightSources.Add(new(LongToPoint(i), Tiles[i].Property.Hue));
+                    continue;
+                }
+                if (IncludeCreatures && Tiles[i].Creature != null && Tiles[i].Creature.LightEmmitance > 0)
+                    lightSources.Add(new(LongToPoint(i), Tiles[i].Creature.Hue));
+
             }
             return lightSources.ToArray();
         }
+        #endregion
+
+
+
+        #region Utilities
+        internal Point[] GetAllUnlitTorches(bool reset = false) {
+            if (!reset && UnlitTorches != null)
+                return UnlitTorches;
+
+            List<Point> unlitTorches = new();
+            for (int i = 0; i < Tiles.Length; i++) {
+                if (Tiles[i].Property.Texture == Texture.UnlitTorch)
+                    unlitTorches.Add(LongToPoint(i));
+            }
+            UnlitTorches = unlitTorches.ToArray();
+            return UnlitTorches;
+        }
+
+        internal void LightTorch(Point p, bool debug = true) {
+            if (Tiles[PointToLong(p)].Property.Texture != Texture.UnlitTorch) {
+                if (debug)
+                    throw new($"No unlit torch at ({p.x},{p.y})");
+                return;
+            }
+            Tiles[PointToLong(p)].SetTexture(Texture.LitTorch);
+            LitTorches++;
+        }
+        internal void UnlightTorch(Point p, bool debug = true) {
+            if (Tiles[PointToLong(p)].Property.Texture != Texture.LitTorch) {
+                if (debug)
+                    throw new($"No lit torch at ({p.x},{p.y})");
+                return;
+            }
+            Tiles[PointToLong(p)].SetTexture(Texture.UnlitTorch);
+            LitTorches--;
+        }
 
         internal Point GetRandomFreeSpace() {
-            if (!Tiles.Any(x => x.Texture == Texture.Floor)) throw new("No free spaces to place Player");
+            if (!Tiles.Any(x => x.Property.Texture == Texture.Floor)) throw new("No free spaces to place Player");
 
             Point p;
             do p = new(rnd.Next(AreaWidth), rnd.Next(AreaHeight));
-            while (GetTile(p).Texture != Texture.Floor);
+            while (GetTile(p).Property.Texture != Texture.Floor);
 
             return p;
         }
+
+        internal int DistanceToPlayer(Point p) => (int)DistanceBetweenPoints(p, Player.Position);
 
         /// <summary>
         /// Attempts to spawn a creature at a specific tile
@@ -185,13 +267,18 @@ namespace RogueLit2.Classes {
         /// <param name="position">The position</param>
         /// <param name="force">If you want to force a spawn. !!!DANGEROUS!!!</param>
         /// <returns>Null if successful, or the type of creature that exists there if the spawn was unsuccessful</returns>
-        internal Creature? SpawnCreature(Creature creature, Point position, bool force = false) {
-            if (Tiles[PointToLong(position)].Texture != Texture.Floor) throw new($"There is no floor at ({position.x},{position.y}) to spawn creature {creature}");
+        internal CreatureProperties? SpawnCreature(Creature creature, Point position, bool force = false) {
+            if (!BoundCheck(position)) throw new($"Attempt to spawn {creature} outside of bounds");
+            if (!force && Tiles[PointToLong(position)].Property.Texture != Texture.Floor) throw new($"There is no floor at ({position.x},{position.y}) to spawn creature {creature}");
             if (!force && Tiles[PointToLong(position)].Creature != null) return Tiles[PointToLong(position)].Creature;
 
-            Tiles[PointToLong(position)].Creature = creature;
+            Tiles[PointToLong(position)].SetCreature(creature);
             return null;
         }
+        internal void DeleteCreature(Point position) {
+            Tiles[PointToLong(position)].SetCreature(null);
+        }
+
 
         /// <summary>
         /// Moves a creature from posFrom to posTo
@@ -201,6 +288,7 @@ namespace RogueLit2.Classes {
         /// <param name="force">To force move a creature, regardless of if there is an obsticle</param>
         /// <returns>A bool indicating the success of whether the creature has been moved</returns>
         internal bool MoveCreature(Point posFrom, Point posTo, bool force = false) {
+            if (!BoundCheck(posFrom) || !BoundCheck(posTo)) return false;
             if (Tiles[PointToLong(posFrom)].Creature == null) throw new($"No creature found at ({posFrom.x},{posFrom.y})");
             if (!force && Tiles[PointToLong(posTo)].Creature != null) return false;
 
@@ -209,8 +297,15 @@ namespace RogueLit2.Classes {
             return true;
         }
 
+        #endregion 
 
-        public Tile GetTile(Point point) => Tiles[PointToLong(point)];
+        /// <summary>
+        /// BoundCheck for a point. Returns true if it succeeds the bound check
+        /// </summary>
+        /// <param name="p"></param>
+        /// <returns></returns>
+        private bool BoundCheck(Point p) => p.x < AreaWidth && p.y < AreaHeight && p.x >= 0 && p.y >= 0;
+        public Tile? GetTile(Point point) => BoundCheck(point) ? Tiles[PointToLong(point)] : null;
         private int PointToLong(Point p) => (p.y * AreaWidth) + p.x;
         private Point LongToPoint(int p) => new(p % AreaWidth, p / AreaWidth);
 
