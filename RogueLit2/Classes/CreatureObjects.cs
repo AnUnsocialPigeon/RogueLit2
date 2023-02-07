@@ -36,6 +36,7 @@
         internal Aggression Aggression { get; set; }
         internal int PlayerViscinityThreshold { get; set; }
         internal Task? Handler { get; set; }
+        internal DateTime LastTimeMoved { get; set; } = DateTime.MinValue;
 
     }
 

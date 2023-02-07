@@ -32,10 +32,12 @@
         private int DepthUIBoxID;
 
         private readonly Random rnd = new();
-        private Task CreatureHandlerTask;
         private Task CreepyBreathTask;
 
-        private SFX[] WinSFX = new SFX[] { SFX.Bell2, SFX.Bell1, SFX.Bell2, SFX.Bell4, SFX.Bell3, SFX.JumpScare1 };
+        internal DateTime StartTime = DateTime.MinValue;
+
+        private SFX[] WinSFX = new SFX[] { SFX.Bell2, SFX.Bell1, SFX.Bell3, SFX.Bell4, SFX.JumpScare1 };
+        private SFX[] WinSFX2 = new SFX[] { SFX.Drama2, SFX.Drama3, SFX.Drama4, SFX.Drama1, SFX.Drama5 };
 
 
         internal GameMaster() {
@@ -44,7 +46,8 @@
         internal void Begin() {
             CreatureHandler = new(this);
             GenerateLevel();
-            CreatureHandlerTask = CreatureHandler.Start();
+            CreatureHandler.Start();
+            StartTime = DateTime.Now;
 
             // Starts a task loop to play creepy breath audio's
             CreepyBreathTask = new(() => {
@@ -76,7 +79,8 @@
             // reset player
             ResetPlayer();
 
-            AudioController.PlayAudio(WinSFX[Math.Min(Depth, WinSFX.Length - 1)]);
+            AudioController.PlayAudio(WinSFX[Math.Min(Depth - 1, WinSFX.Length - 1)]);
+            AudioController.PlayAudio(WinSFX2[Math.Min(Depth - 1, WinSFX.Length - 1)]);
         }
 
         private void ResetPlayer() {
@@ -99,7 +103,10 @@
 
                 CameraHandler.UpdateTorchUI();
                 CameraHandler.UpdateUIBox(GetDepthContents(), DepthUIBoxID);
+                return;
             }
+
+            CreatureHandler.Currency += 10;
         }
 
         private string[] GetDepthContents() =>

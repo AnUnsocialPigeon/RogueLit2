@@ -1,4 +1,6 @@
-﻿namespace RogueLit2.Classes {
+﻿using RogueLit2.Classes.Controllers;
+
+namespace RogueLit2.Classes {
     internal class Level {
         internal int AreaWidth, AreaHeight;
         internal Tile[] Tiles;
@@ -143,27 +145,36 @@
         #endregion
 
         #region CalculteBrigthness
-        internal void UpdateAllLightValue() {
+        internal void UpdateAllLightValue(CameraHandler c) {
             LightSource[] lightSources = GetAllLightSources(true);
+            Point p = c.GetCameraPosition();
 
-            for (int i = 0; i < Tiles.Length; i++) {
-                Point t = LongToPoint(i);
-                Light l = GetMaxBrightness(lightSources, t);
+            for (int y = 0; y < CameraHandler.CameraHeight; y++) {
+                for (int x = 0; x < CameraHandler.CameraWidth; x++) {
+                    int i = (AreaWidth * (y + p.y)) + x + p.x;
 
-                Tiles[i].RedLightLevel = l.Hue == Hue.Red ? l.Intensity : 0;
-                Tiles[i].LightLevel = l.Hue == Hue.Default ? l.Intensity : 0;
+                    Light l = GetMaxBrightness(lightSources, i);
+
+                    Tiles[i].RedLightLevel = l.Hue == Hue.Red ? l.Intensity : 0;
+                    Tiles[i].LightLevel = l.Hue == Hue.Default ? l.Intensity : 0;
+                }
             }
         }
 
 
-        private Light GetMaxBrightness(LightSource[] lightSources, Point tile) {
+        private Light GetMaxBrightness(LightSource[] lightSources, int longTile) {
+            Point tilePoint = LongToPoint(longTile);
             Light maxBrightness = new(0, Hue.Red);
-            foreach (LightSource p in lightSources) {
+
+            for (int i = 0; i < lightSources.Length; i++) {
+                LightSource p = lightSources[i];
+                int pLong = PointToLong(p.Position);
+
                 Tile lightSource = GetTile(p.Position);
                 CreatureProperties? creature = lightSource.Creature;
 
                 // Prioritising White.
-                if ((lightSource.Property.Hue == Hue.Red || (creature != null && creature.Hue == Hue.Red)) && maxBrightness.Hue == Hue.Default) 
+                if (maxBrightness.Hue == Hue.Default && (lightSource.Property.Hue == Hue.Red || (creature != null && creature.Hue == Hue.Red)))
                     continue;
 
 
@@ -172,14 +183,15 @@
                         creature.LightEmmitance);
 
                 // For dist = 0
-                if (p.Position.x == tile.x && p.Position.y == tile.y) {
+                if (pLong == longTile) {
                     maxBrightness.Intensity = lightSourceLevel;
 
                     // Change hue to default if it is red
                     maxBrightness.Hue = maxBrightness.Hue == Hue.Default ? Hue.Default : p.Hue;
+                    continue;
                 }
 
-                int distance = Math.Min((int)(lightSourceLevel / DistanceBetweenPoints(p.Position, tile)), 7);
+                int distance = Math.Min((int)(lightSourceLevel / DistanceBetweenPoints(p.Position, tilePoint)), 7);
                 if ((p.Hue == Hue.Default && distance > 0 && maxBrightness.Hue == Hue.Red) || distance > maxBrightness.Intensity) {
                     maxBrightness.Intensity = distance;
 
@@ -194,7 +206,7 @@
         internal double DistanceBetweenPoints(Point p, Point t) {
             double x = p.x - t.x;
             double y = p.y - t.y;
-            return (double)Math.Sqrt((x * x) + (y * y));
+            return (double)((x * x) + (y * y)) / 4.4d;
         }
 
         // TODO: MAKE EFFICIENT
@@ -297,7 +309,7 @@
             return true;
         }
 
-        #endregion 
+        #endregion
 
         /// <summary>
         /// BoundCheck for a point. Returns true if it succeeds the bound check

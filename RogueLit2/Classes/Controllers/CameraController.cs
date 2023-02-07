@@ -55,10 +55,12 @@ namespace RogueLit2.Classes.Controllers {
 
             Task t = Task.Run(() => {
                 while (UpdateBuffer > 0) {
-                    while (Pause)
-                        continue;
                     Update();
-                    UpdateBuffer = 0;
+                    while (Pause) {
+                        UpdateBuffer = 2;
+                        continue;
+                    }
+                    UpdateBuffer--;
                 }
             });
         }
@@ -67,8 +69,8 @@ namespace RogueLit2.Classes.Controllers {
         /// Updates the screen with what it needs to display
         /// </summary>
         private void Update() {
-            GameMaster.Level.UpdateAllLightValue();
-            Tile[] subLevel = GetRenderedTilesAroundPlayer(CameraWidth, CameraHeight);
+            GameMaster.Level.UpdateAllLightValue(this);
+            Tile[] subLevel = GetRenderedTilesAroundPlayer();
 
             GuiObject[] toRender = new GuiObject[subLevel.Length];
             for (int i = 0; i < subLevel.Length; i++) {
@@ -102,21 +104,24 @@ namespace RogueLit2.Classes.Controllers {
         private void RenderTileToScreen(GuiObject[] guiObject, bool forceOverride = false) {
             // Setup cursor position
             bool skip = false;
-            Console.SetCursorPosition(0, 0);
             if (FirstRender) {
                 LastRender = new GuiObject[guiObject.Length].Select(x => x = new("EE", "")).ToArray();
                 FirstRender = false;
             }
 
-            string toRenderMarkup = "";
-            for (int i = 0; i < guiObject.Length; i++) {
-                // Replace
-                toRenderMarkup += RenderTile(i, guiObject[i], skip);
-                if ((i + 1) % CameraWidth == 0) toRenderMarkup += "\n";
+            string toRenderMarkup, add;
+            for (int y = 0; y < CameraHeight; y++) {
+                toRenderMarkup = "";
+                bool overlap = false;
+                for (int x = 0; x < CameraWidth; x++) {
+                    int guiLongIndex = (y * CameraWidth) + x;
+                    (add, overlap) = RenderTile(guiObject[(guiLongIndex == 0 ? 1 : guiLongIndex) - 1], guiLongIndex, guiObject[guiLongIndex], overlap, x == 0);
+                    toRenderMarkup += add;
+                }
+                Console.SetCursorPosition(0, y);
+                AnsiConsole.Markup($"{toRenderMarkup}[/]");
             }
 
-            Console.SetCursorPosition(0, 0);
-            AnsiConsole.Markup(toRenderMarkup);
         }
 
         /// <summary>
@@ -124,15 +129,15 @@ namespace RogueLit2.Classes.Controllers {
         /// </summary>
         /// <param name="longPos">the longPos of the tile that needs to be rendered to the screen</param>
         /// <param name="guiObject">The GuiObject to render to the screen</param>
-        /// <param name="skip">Whether there has been tiles that have been skipped</param>
-        private string RenderTile(int longPos, GuiObject guiObject, bool skip) {
-            Point position = new((longPos * guiObject.icon.Length) % (CameraWidth * guiObject.icon.Length), longPos / CameraWidth);
+        private (string, bool) RenderTile(GuiObject lastObj, int longPos, GuiObject guiObject, bool lastWasUI, bool first) {
+            Point position = new(longPos * guiObject.icon.Length % (CameraWidth * guiObject.icon.Length), longPos / CameraWidth);
 
             if (UIBoxes.Any(x => x.PointInArea(position))) {
                 UIBox overlap = UIBoxes.Where(x => x.PointInArea(position)).Last();
-                return GetPartOfUIBox(overlap, position);
+                return ((first ? "[#ffffff]" : lastWasUI ? "" : "[/][#ffffff]") + GetPartOfUIBox(overlap, position), true);
             }
-            return $"[#{guiObject.hexColour}]{guiObject.icon}[/]";
+
+            return ($"{(!first && (lastWasUI || lastObj.hexColour != guiObject.hexColour) ? $"[/][#{guiObject.hexColour}]" : lastObj.hexColour != guiObject.hexColour || first ? $"[#{guiObject.hexColour}]" : "")}{guiObject.icon}", false);
         }
 
         private string GetPartOfUIBox(UIBox overlap, Point position) {
@@ -140,13 +145,13 @@ namespace RogueLit2.Classes.Controllers {
             return String.Join("", overlap.Contents[difference.y][difference.x], overlap.Contents[difference.y][difference.x + 1]);
         }
 
-        private Tile[] GetRenderedTilesAroundPlayer(int cameraWidth, int cameraHeight) {
-            Point cameraPos = GetCameraPosition(cameraWidth, cameraHeight);
+        private Tile[] GetRenderedTilesAroundPlayer() {
+            Point cameraPos = GetCameraPosition();
 
             // Get all tiles around the camera
             List<Tile> renderTiles = new();
-            for (int y = 0; y < cameraHeight; y++) {
-                for (int x = 0; x < cameraWidth; x++) {
+            for (int y = 0; y < CameraHeight; y++) {
+                for (int x = 0; x < CameraWidth; x++) {
                     Point t = new(cameraPos.x + x, cameraPos.y + y);
                     renderTiles.Add(GameMaster.Level.GetTile(t));
                 }
@@ -158,17 +163,15 @@ namespace RogueLit2.Classes.Controllers {
         /// <summary>
         /// Gets the top left position of the camera
         /// </summary>
-        /// <param name="cameraWidth">The width of the camera</param>
-        /// <param name="cameraHeight">The height of the camera</param>
         /// <returns></returns>
-        private Point GetCameraPosition(int cameraWidth, int cameraHeight) {
+        internal Point GetCameraPosition() {
             Point playerPos = GameMaster.Player.Position;
             int areaWidth = GameMaster.Level.AreaWidth;
             int areaHeight = GameMaster.Level.AreaHeight;
 
             Point cameraPos = new(
-                Math.Clamp(playerPos.x - cameraWidth / 2, 0, areaWidth - cameraWidth),
-                Math.Clamp(playerPos.y - cameraHeight / 2, 0, areaHeight - cameraHeight)
+                Math.Clamp(playerPos.x - CameraWidth / 2, 0, areaWidth - CameraWidth),
+                Math.Clamp(playerPos.y - CameraHeight / 2, 0, areaHeight - CameraHeight)
             );
 
             return cameraPos;
@@ -206,7 +209,7 @@ namespace RogueLit2.Classes.Controllers {
         }
 
         internal bool IsPointInView(Point position) {
-            Point camera = GetCameraPosition(CameraWidth, CameraHeight);
+            Point camera = GetCameraPosition();
             return position.x >= camera.x && position.x < camera.x + CameraWidth && position.y >= camera.y && position.y < camera.y + CameraHeight;
         }
 

@@ -30,6 +30,36 @@ namespace RogueLit2 {
             Console.CursorVisible = false;
             Console.Title = "RogueLit 2";
 
+            // Intro
+            Console.WriteLine("Warwick GameJam Submission 2023 - Theme: Rogue");
+            Console.WriteLine("\nA quick introduction to RogueLit 2 : Made by Jake (Solo)");
+            Console.WriteLine("\nThis is a game that has been fully built in C#");
+            Console.WriteLine("No game engine, no external libraries (except Spectre Console, for the colours)");
+            Console.WriteLine("No nothing. Pure C#.");
+            Console.WriteLine("\nPress 'Enter' to continue [Introduction 1/4]");
+            Console.ReadLine();
+            Console.Clear();
+
+            Console.WriteLine("Warwick GameJam Submission 2023 - Theme: Rogue");
+            Console.WriteLine("\nControls:");
+            Console.WriteLine("WASD or Arrow keys   = Move");
+            Console.WriteLine("Space                = Mine");
+            Console.WriteLine("\nPress 'Enter' to continue [Introduction 2/4]");
+            Console.ReadLine();
+            Console.Clear();
+
+            Console.WriteLine("Warwick GameJam Submission 2023 - Theme: Rogue");
+            Console.WriteLine("\nIntroduction:");
+            Console.WriteLine("You don't know where you are, you don't know where you came from, you dont even know who you even are. " +
+                "All you know is that you do not belong here. Armed with a torch, a pickaxe, and not much else, you set your sights on survival " +
+                "by any means necessary.\nLittered around seem to be beacon-like constructs. They seem to glow red, the embers of whoever came before " +
+                "still emitting some vague warmth. Relighting these might be the key to success. The harrowing screams of the fellow inhabitance of the " +
+                "cave do not feel welcoming. Their unrecognizable screams echo through your mind. You raise your torch and swing the pickaxe over one shoulder. " +
+                "\nIt's time to move.");
+            Console.WriteLine("\nPress 'Enter' to continue [Introduction 3/4]");
+            Console.ReadLine();
+            Console.Clear();
+
             new Task(() => {
                 while (true) {
                     DisableConsoleMovement.SetFont("consolas", 26);
@@ -37,6 +67,9 @@ namespace RogueLit2 {
                 }
             }).Start();
 
+            Console.WriteLine("\n\n\n\n\n\n\n\n\n\n\n\n\n                                             Use headphones for the best experience.");
+            Console.WriteLine("\n\n\n\n\n\n\n\n\n\n\n\n\n\nPress 'Enter' to continue");
+            Console.ReadLine();
             //GameMaster = new();
             StartScreen();
 
@@ -107,7 +140,7 @@ namespace RogueLit2 {
             lastMineKeyPressed = DateTime.Now;
         }
 
-        private static bool CanMove(double mineMultiplier = 1f) =>
+        private static bool CanMove(double mineMultiplier = 1f) => !GameMaster.CameraHandler.Pause &&
             (DateTime.Now - lastMovementKeyPressed).TotalMilliseconds > MinTimeBetweenMoves &&
             (DateTime.Now - lastMineKeyPressed).TotalMilliseconds > (MinTimeBetweenMines / mineMultiplier);
 

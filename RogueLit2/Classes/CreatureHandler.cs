@@ -43,17 +43,36 @@ namespace RogueLit2.Classes {
             this.GameMaster = GameMaster;
         }
 
-        public Task Start() {
+        public void Start() {
             if (GameMaster.CameraHandler == null) throw new("CameraHandler has not been set");
-            Task t = new(() => {
+            Task spawnHandler = new(() => {
                 while (true) {
                     Thread.Sleep(GameTickTime);
                     HandleEnemySpawns();
                     Currency += CurrencyPerTick;
                 }
             });
-            t.Start();
-            return t;
+
+            Task movementHandler = new(() => {
+                while (true) {
+                    for (int i = 0; i < Creatures.Count; i++) {
+                        CreatureObject c = Creatures[i];
+                        try {
+                            if ((DateTime.Now - c.LastTimeMoved).TotalMilliseconds >= c.Slowness / CreatureSpeedMultiplier) {
+                                Creatures[i] = HandleCreatureMovement(c);
+                                Creatures[i].LastTimeMoved = DateTime.Now;
+                            }
+                        }
+                        catch (Exception e) {
+                            Creatures.RemoveAt(i);
+                            i--;
+                        }
+                    }
+                    Thread.Sleep(50);
+                }
+            });
+            spawnHandler.Start();
+            movementHandler.Start();
         }
 
         private void HandleEnemySpawns() {
@@ -80,22 +99,9 @@ namespace RogueLit2.Classes {
             CreatureObject creature = GetCreatureObjectInformation(newCreature, p);
 
             if (creature.Property.Creature == Creature.Ghost)
-                GameMaster.PlayAudio(SFX.Whoosh1);
+                GameMaster.PlayAudio(SFX.Whoosh2);
 
             Creatures.Add(creature);
-            Task t = Task.Run(() => {
-                bool destroy = false;
-                while (!destroy) {
-                    try {
-                        creature = HandleCreatureMovement(creature);
-                        Thread.Sleep((int)(creature.Slowness / CreatureSpeedMultiplier));
-                    }
-                    catch (Exception e) {
-                        destroy = true;
-                    }
-                }
-            });
-            creature.Handler = t;
         }
 
         private CreatureObject GetCreatureObjectInformation(Creature creature, Point position) {
@@ -122,7 +128,7 @@ namespace RogueLit2.Classes {
                     PlayerViscinityThreshold: 9);
             if (creature == Creature.Ghost) {
                 return new(position, PropertyGetter.CreatureToCreatureProperties[creature],
-                    Slowness: 630,
+                    Slowness: 650,
                     UnitSize: 5,
                     Aggression: Aggression.Aggressive,
                     PlayerViscinityThreshold: 10000);
@@ -143,6 +149,9 @@ namespace RogueLit2.Classes {
 
             if (creature.Aggression == Aggression.Trap && !seePlayer)
                 return creature;
+
+            if (seePlayer && !GameMaster.IsAudioPlaying(SFX.Heartbeat1))
+                GameMaster.PlayAudio(SFX.Heartbeat1);
 
             // Looses Aggression
             if (creature.Aggression == Aggression.Aggressive && !seePlayer) {
@@ -221,8 +230,17 @@ namespace RogueLit2.Classes {
             if (t.x == GameMaster.Player.Position.x && t.y == GameMaster.Player.Position.y) {
                 GameMaster.PlayAudio(SFX.BodyFall1);
                 GameMaster.PlayAudio(SFX.Grunt1);
+
+                // GameOver
+                int id = GameMaster.CameraHandler.CreateUIBox(GameOver(), (CameraHandler.CameraWidth * 2) - 4, CameraHandler.CameraHeight - 4, new(2, 4));
+                GameMaster.CameraHandler.Pause = true;
+                Thread.Sleep(10000);
+
                 GameMaster.Reset();
+                GameMaster.CameraHandler.DeleteUIBox(id);
                 GameMaster.CameraHandler.QueueUpdate();
+                GameMaster.StartTime = DateTime.Now;
+                GameMaster.CameraHandler.Pause = false;
                 return;
             }
 
@@ -233,8 +251,25 @@ namespace RogueLit2.Classes {
             }
         }
 
+        private string[] GameOver() {
+            int width = (CameraHandler.CameraWidth * 2) - 4;
+            int height = CameraHandler.CameraHeight - 4;
+            List<string> GameOverScreen = new();
 
-        private bool[] GetAvailableTiles(CreatureObject creature) => 
+            GameOverScreen.Add("+" + string.Concat(Enumerable.Repeat("-", width - 2)) + "+");
+            for (int y = 0; y < height - 2; y++) GameOverScreen.Add("|" + string.Concat(Enumerable.Repeat(" ", width - 2)) + "|");
+            GameOverScreen.Add("+" + string.Concat(Enumerable.Repeat("-", width - 2)) + "+");
+
+            // Manually adding contents. Low on time
+            string timeAlive = (DateTime.Now - GameMaster.StartTime).TotalSeconds.ToString();
+            GameOverScreen[2] = $"|                                  YOU DIED{string.Concat(Enumerable.Repeat(" ", width - 44))}|";
+            GameOverScreen[8] = $"|     Time Alive: {timeAlive}s{string.Concat(Enumerable.Repeat(" ", width - (20 + timeAlive.Length)))}|";
+            GameOverScreen[9] = $"|     Depth: {GameMaster.Depth}{string.Concat(Enumerable.Repeat(" ", width - (14 + GameMaster.Depth.ToString().Length)))}|";
+            GameOverScreen[11] = $"|                            Restarting in 10s...{string.Concat(Enumerable.Repeat(" ", width - 50))}|";
+            return GameOverScreen.ToArray();
+        }
+
+        private bool[] GetAvailableTiles(CreatureObject creature) =>
             GameMaster.Level.GetTilesAdjascent(creature.Position).Select(x => x != null && CanCreatureStepOnTile(x, creature)).ToArray();
 
         public Point GetTileToMoveTo(Point creaturePoint, Point playerPoint, bool[] availableTiles) {
