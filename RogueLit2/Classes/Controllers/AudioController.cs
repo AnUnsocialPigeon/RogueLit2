@@ -35,6 +35,7 @@ namespace RogueLit2.Classes.Controllers {
             { SFX.Confetti, Directory.GetCurrentDirectory() + @"\Assets\Other\Confetti.wav" },
             { SFX.Yay, Directory.GetCurrentDirectory() + @"\Assets\Other\Yay.wav" },
             { SFX.MainTheme1, Directory.GetCurrentDirectory() + @"\Assets\executed-by-guillotine-74406.wav" },
+            { SFX.Hell1, Directory.GetCurrentDirectory() + @"\Assets\Wails_In_Hell.wav" },
         };
         private Dictionary<SFX, int> SFXLengths = new() {
             { SFX.Footstep1, 59 },
@@ -66,6 +67,7 @@ namespace RogueLit2.Classes.Controllers {
             { SFX.Confetti, 1 },
             { SFX.Yay, 1 },
             { SFX.MainTheme1, 54 },
+            { SFX.Hell1, 60 },
         };
 
         private Dictionary<SFX, AudioObject> AudioObjects = new();
@@ -148,5 +150,6 @@ namespace RogueLit2.Classes.Controllers {
         JumpScare1,
         Whoosh1,
         Whimper1,
+        Hell1,
     }
 }

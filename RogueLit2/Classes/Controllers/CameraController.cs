@@ -58,7 +58,7 @@ namespace RogueLit2.Classes.Controllers {
                     while (Pause)
                         continue;
                     Update();
-                    UpdateBuffer--;
+                    UpdateBuffer = 0;
                 }
             });
         }

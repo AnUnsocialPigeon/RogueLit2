@@ -58,6 +58,7 @@ namespace RogueLit2 {
         private static void StartScreen() {
             GameMaster.PlayAudio(SFX.MainTheme1, true);
             GameMaster.PlayAudio(SFX.Fire2, true);
+            GameMaster.PlayAudio(SFX.Hell1, true);
 
             // Main start sim
             MainScreenSimulation sim = new(CameraHandler.CameraWidth, CameraHandler.CameraHeight, 0);
@@ -68,6 +69,7 @@ namespace RogueLit2 {
 
             GameMaster.StopAudio(SFX.MainTheme1);
             GameMaster.StopAudio(SFX.Fire2);
+            GameMaster.StopAudio(SFX.Hell1);
         }
 
         private static DateTime lastMovementKeyPressed = DateTime.Now;
