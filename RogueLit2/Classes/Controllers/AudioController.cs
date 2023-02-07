@@ -44,6 +44,7 @@ namespace RogueLit2.Classes.Controllers {
             { SFX.Yay, Directory.GetCurrentDirectory() + @"\Assets\Other\Yay.wav" },
             { SFX.MainTheme1, Directory.GetCurrentDirectory() + @"\Assets\executed-by-guillotine-74406.wav" },
             { SFX.Hell1, Directory.GetCurrentDirectory() + @"\Assets\Wails_In_Hell.wav" },
+            { SFX.Menu1, Directory.GetCurrentDirectory() + @"\Assets\Other\RubberBandSnap_S08FO.2219.wav" },
         };
         private Dictionary<SFX, int> SFXLengths = new() {
             { SFX.Footstep1, 59 },
@@ -84,6 +85,7 @@ namespace RogueLit2.Classes.Controllers {
             { SFX.Yay, 1 },
             { SFX.MainTheme1, 54 },
             { SFX.Hell1, 60 },
+            { SFX.Menu1, 1 },
         };
 
         private Dictionary<SFX, AudioObject> AudioObjects = new();
@@ -175,6 +177,6 @@ namespace RogueLit2.Classes.Controllers {
         Drama4,
         Drama5,
         Heartbeat1,
-        HeavyBreathing1,
+        Menu1,
     }
 }

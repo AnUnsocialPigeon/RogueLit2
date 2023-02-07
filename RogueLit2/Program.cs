@@ -34,10 +34,11 @@ namespace RogueLit2 {
             Console.WriteLine("Warwick GameJam Submission 2023 - Theme: Rogue");
             Console.WriteLine("\nA quick introduction to RogueLit 2 : Made by Jake (Solo)");
             Console.WriteLine("\nThis is a game that has been fully built in C#");
-            Console.WriteLine("No game engine, no external libraries (except Spectre Console, for the colours)");
-            Console.WriteLine("No nothing. Pure C#.");
+            Console.WriteLine("No game engine, no external libraries (except Spectre.Console, for the UI colours)");
+            Console.WriteLine("No nothing. Pure C#.\n\nSource Code can be found here: https://github.com/AnUnsocialPigeon/RogueLit2");
             Console.WriteLine("\nPress 'Enter' to continue [Introduction 1/4]");
             Console.ReadLine();
+            GameMaster.PlayAudio(SFX.Menu1);
             Console.Clear();
 
             Console.WriteLine("Warwick GameJam Submission 2023 - Theme: Rogue");
@@ -46,18 +47,20 @@ namespace RogueLit2 {
             Console.WriteLine("Space                = Mine");
             Console.WriteLine("\nPress 'Enter' to continue [Introduction 2/4]");
             Console.ReadLine();
+            GameMaster.PlayAudio(SFX.Menu1);
             Console.Clear();
 
             Console.WriteLine("Warwick GameJam Submission 2023 - Theme: Rogue");
             Console.WriteLine("\nIntroduction:");
             Console.WriteLine("You don't know where you are, you don't know where you came from, you dont even know who you even are. " +
                 "All you know is that you do not belong here. Armed with a torch, a pickaxe, and not much else, you set your sights on survival " +
-                "by any means necessary.\nLittered around seem to be beacon-like constructs. They seem to glow red, the embers of whoever came before " +
+                "by any means necessary.\nLittered around are beacon-like constructs. They seem to glow red, the embers of whoever came before " +
                 "still emitting some vague warmth. Relighting these might be the key to success. The harrowing screams of the fellow inhabitance of the " +
                 "cave do not feel welcoming. Their unrecognizable screams echo through your mind. You raise your torch and swing the pickaxe over one shoulder. " +
                 "\nIt's time to move.");
             Console.WriteLine("\nPress 'Enter' to continue [Introduction 3/4]");
             Console.ReadLine();
+            GameMaster.PlayAudio(SFX.Menu1);
             Console.Clear();
 
             new Task(() => {
@@ -70,6 +73,10 @@ namespace RogueLit2 {
             Console.WriteLine("\n\n\n\n\n\n\n\n\n\n\n\n\n                                             Use headphones for the best experience.");
             Console.WriteLine("\n\n\n\n\n\n\n\n\n\n\n\n\n\nPress 'Enter' to continue");
             Console.ReadLine();
+            GameMaster.PlayAudio(SFX.Bell3);
+            Thread.Sleep(500);
+
+
             //GameMaster = new();
             StartScreen();
 
